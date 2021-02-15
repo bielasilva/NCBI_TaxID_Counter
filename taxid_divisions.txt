@@ -1,0 +1,10 @@
+SuperKingdom:
+2 	Bacteria
+10239 	Viruses
+2157 	Archaea
+
+Kingdom:
+4751 	Fungi
+
+Phylum:
+5794,33682	Protozoa 
