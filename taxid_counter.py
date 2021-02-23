@@ -20,21 +20,28 @@ def main():
 def get_taxids(in_file, origin):
     """Gets the output file from the classification program and returns a list with all the TaxIDs."""
     print(f"\nGetting TaxIDs from {origin}")
-    taxid_list = []
+    taxid_list = set([])
     with open(in_file) as csv_read:
         mg_result = csv.reader(csv_read, delimiter='\t')
+        metaphlan = False
+        if any(st in in_file for st in ["centrifuge", "krk"]): #centrifuge, kraken2 and metaplhan3
+            index = 2
+        elif "metacache" in in_file: #metacache
+            index = 3
+        elif "mpa-out" in in_file:
+            index = 1
+            metaphlan = True
+        else:
+            print("File format not recognized")
+            exit()
         for row in mg_result:
             if not row[0].startswith("#"):
-                if any(st in in_file for st in ["centrifuge", "krk"]):
-                    if row[2] != "0":
-                        taxid_list.append(row[2])
-                elif "metacache" in in_file:
-                    if row[3] != "0":
-                        taxid_list.append(row[3])
-                else:
-                    print("File format not recognized")
-                    exit()
-        taxid_list = list(set(taxid_list))
+                if metaphlan:
+                    for item in row[index].split("|"):
+                        taxid_list.add(item)
+                elif row[index] != "0":
+                    taxid_list.add(row[index])
+        taxid_list = list(taxid_list)
     print(f"Got {len(taxid_list)} unique TaxIDs")
     return taxid_list
 
