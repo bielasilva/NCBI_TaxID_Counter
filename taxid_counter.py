@@ -6,15 +6,114 @@ import csv, os, sys
 def main():
     """Function to  run the program."""
     print("\n## Beginning program ##")
-    for file in sys.argv[1:]:
-        metag_result_file = str(os.path.abspath(file))
-        file_name = metag_result_file.split("/")[-1]
-        get_taxids_out = get_taxids(metag_result_file, file_name)
-        get_tax_data_out = get_tax_data(get_taxids_out)
-        sort_tax_data_out = sort_tax_data(get_tax_data_out, file_name)
-        save_file(file_name, sort_tax_data_out[0], sort_tax_data_out[1])
-        print(f"Done with {file_name} \n")
+    if sys.argv[1] != "-compare":
+        print("Normal mode selected")
+        for file in sys.argv[1:]:
+            core_out = core(file)
+            print(f"Done with {core_out[0]} \n")
+    if sys.argv[1] == "-compare":
+        print("Compare mode selected")
+        compare()
 
+def core(file):
+    """Program core, runs the standard operations (getting the TaxIDs and counting them"""
+    metag_result_file = str(os.path.abspath(file))
+    file_name = metag_result_file.split("/")[-1]
+    get_taxids_out = get_taxids(metag_result_file, file_name)
+    get_tax_data_out = get_tax_data(get_taxids_out)
+    sort_tax_data_out = sort_tax_data(get_tax_data_out, file_name)
+    save_file(file_name, sort_tax_data_out)
+    return file_name, sort_tax_data_out
+
+def compare():
+    print("Entering compare module")
+    complete_data = {}
+    for file in sys.argv[2:]:
+        core_out = core(file)
+        if "centrifuge" in core_out[0]:
+            complete_data["centrifuge"] = core_out[1]
+        if "krk" in core_out[0]:
+            complete_data["kraken"] = core_out[1]
+        if "metacache" in core_out[0]:
+            complete_data["metacache"] = core_out[1]
+        if "mpa-out" in core_out[0]:
+            complete_data["metaphlan"] = core_out[1]
+        print(f"Done with {core_out[0]} \n")
+    # with open("complete_data.txt", "w+") as out:
+    #     print(complete_data, file=out)
+    shared_bacteria_taxid = {}
+    shared_fungi_taxid = {}
+    shared_viruses_taxid = {}
+    shared_archaea_taxid = {}
+    ranks = ["phylum", "class", "order", "family", "genus", "species"]
+    # for rank in ranks:
+    #     shared_bacteria_taxid[rank] = complete_data["centrifuge"]["bacteria"][rank].intersection(complete_data["kraken"]["bacteria"][rank],
+    #                                                                                                 complete_data["metacache"]["bacteria"][rank],
+    #                                                                                                 complete_data["metaphlan"]["bacteria"][rank])
+    #     shared_archaea_taxid[rank] = complete_data["centrifuge"]["archaea"][rank].intersection(complete_data["kraken"]["archaea"][rank],
+    #                                                                                                 complete_data["metacache"]["archaea"][rank],
+    #                                                                                                 complete_data["metaphlan"]["archaea"][rank])
+    #     shared_viruses_taxid[rank] = complete_data["centrifuge"]["viruses"][rank].intersection(complete_data["kraken"]["viruses"][rank],
+    #                                                                                                 complete_data["metacache"]["viruses"][rank],
+    #                                                                                                 complete_data["metaphlan"]["viruses"][rank])
+    #     shared_fungi_taxid[rank] = complete_data["centrifuge"]["fungi"][rank].intersection(complete_data["kraken"]["fungi"][rank],
+    #                                                                                                 complete_data["metacache"]["fungi"][rank],
+    #                                                                                                 complete_data["metaphlan"]["fungi"][rank])
+    for rank in ranks:
+        shared_bacteria_taxid[rank] = complete_data["centrifuge"]["bacteria"][rank].intersection(complete_data["kraken"]["bacteria"][rank])
+        shared_archaea_taxid[rank] = complete_data["centrifuge"]["archaea"][rank].intersection(complete_data["kraken"]["archaea"][rank])
+        shared_viruses_taxid[rank] = complete_data["centrifuge"]["viruses"][rank].intersection(complete_data["kraken"]["viruses"][rank])
+        shared_fungi_taxid[rank] = complete_data["centrifuge"]["fungi"][rank].intersection(complete_data["kraken"]["fungi"][rank])
+    total = 0
+    print("\nBacteria")
+    for key, value in shared_bacteria_taxid.items():
+        print(key, "->", len(value))
+        total += len(value)
+    print(f"Total = {total}")
+    total = 0
+    
+    print("\nArchaea")
+    for key, value in shared_archaea_taxid.items():
+        print(key, "->", len(value))
+        total += len(value)
+    print(f"Total = {total}")
+    
+    total = 0
+    print("\nFungi")
+    for key, value in shared_fungi_taxid.items():
+        print(key, "->", len(value))
+        total += len(value)
+    print(f"Total = {total}")
+    
+    total = 0
+    print("\nViruses")
+    for key, value in shared_viruses_taxid.items():
+        print(key, "->", len(value))
+        total += len(value)
+    print(f"Total = {total}")
+
+    # shared_bacteria_names = {}
+    # shared_fungi_names = {}
+    # shared_viruses_names = {}
+    # shared_archaea_names = {}
+    # for key, value in shared_bacteria_taxid.items():
+    #     print(f"Getting data from Bacteria {key}")
+    #     get_tax_data_out = get_tax_data(list(value))
+    #     shared_bacteria_names[f'{key}'] = [item["ScientificName"] for item in get_tax_data_out]
+    # for key, value in shared_archaea_taxid.items():
+    #     print(f"Getting data from archaea {key}")
+    #     get_tax_data_out = get_tax_data(list(value))
+    #     shared_archaea_names[f'{key}'] = [item["ScientificName"] for item in get_tax_data_out]
+    # for key, value in shared_fungi_taxid.items():
+    #     print(f"Getting data from fungi {key}")
+    #     get_tax_data_out = get_tax_data(list(value))
+    #     shared_fungi_names[f'{key}'] = [item["ScientificName"] for item in get_tax_data_out]
+    # for key, value in shared_viruses_taxid.items():
+    #     print(f"Getting data from viruses {key}")
+    #     get_tax_data_out = get_tax_data(list(value))
+    #     shared_viruses_names[f'{key}'] = [item["ScientificName"] for item in get_tax_data_out]
+        
+    # print(shared_bacteria_names,"\n", shared_archaea_names,"\n", shared_fungi_names,"\n", shared_viruses_names)
 
 # This function gets the TaxIDs from the report file
 def get_taxids(in_file, origin):
@@ -85,90 +184,34 @@ def sort_tax_data(data_list, origin):
                     archaea["superkingdom"].add(entry["TaxId"])
             elif "2" in (entry["TaxId"], (next((item["TaxId"] for item in entry["LineageEx"] if item["TaxId"] == "2"), None))):
                 for rank in ranks:
-                    if (next((item["TaxId"] for item in entry["LineageEx"] if item["Rank"] == f"{rank}"), None)) != None:
-                        bacteria[f"{rank}"].add((next((item["TaxId"] for item in entry["LineageEx"] if item["Rank"] == f"{rank}"), None)))
+                    if (next((item["TaxId"] for item in entry["LineageEx"] if item["Rank"] == rank), None)) != None:
+                        bacteria[rank].add((next((item["TaxId"] for item in entry["LineageEx"] if item["Rank"] == rank), None)))
             elif "2157" in (entry["TaxId"], (next((item["TaxId"] for item in entry["LineageEx"] if item["TaxId"] == "2157"), None))):
                 for rank in ranks:
-                    if (next((item["TaxId"] for item in entry["LineageEx"] if item["Rank"] == f"{rank}"), None)) != None:
-                        archaea[f"{rank}"].add((next((item["TaxId"] for item in entry["LineageEx"] if item["Rank"] == f"{rank}"), None)))
+                    if (next((item["TaxId"] for item in entry["LineageEx"] if item["Rank"] == rank), None)) != None:
+                        archaea[rank].add((next((item["TaxId"] for item in entry["LineageEx"] if item["Rank"] == rank), None)))
             elif "10239" in (entry["TaxId"], (next((item["TaxId"] for item in entry["LineageEx"] if item["TaxId"] == "10239"), None))):
                 for rank in ranks:
-                    if (next((item["TaxId"] for item in entry["LineageEx"] if item["Rank"] == f"{rank}"), None)) != None:
-                        viruses[f"{rank}"].add((next((item["TaxId"] for item in entry["LineageEx"] if item["Rank"] == f"{rank}"), None)))
+                    if (next((item["TaxId"] for item in entry["LineageEx"] if item["Rank"] == rank), None)) != None:
+                        viruses[rank].add((next((item["TaxId"] for item in entry["LineageEx"] if item["Rank"] == rank), None)))
             elif "4751" in (entry["TaxId"], (next((item["TaxId"] for item in entry["LineageEx"] if item["TaxId"] == "4751"), None))):
                 for rank in ranks:
-                    if (next((item["TaxId"] for item in entry["LineageEx"] if item["Rank"] == f"{rank}"), None)) != None:
-                        fungi[f"{rank}"].add((next((item["TaxId"] for item in entry["LineageEx"] if item["Rank"] == f"{rank}"), None)))
+                    if (next((item["TaxId"] for item in entry["LineageEx"] if item["Rank"] == rank), None)) != None:
+                        fungi[rank].add((next((item["TaxId"] for item in entry["LineageEx"] if item["Rank"] == rank), None)))
             elif ("5794" in (entry["TaxId"], (next((item["TaxId"] for item in entry["LineageEx"] if item["TaxId"] == "5794"), None)))
                     or "33682" in (entry["TaxId"], (next((item["TaxId"] for item in entry["LineageEx"] if item["TaxId"] == "33682"), None)))):
                 for rank in ranks:
-                    if (next((item["TaxId"] for item in entry["LineageEx"] if item["Rank"] == f"{rank}"), None)) != None:
-                        protozoa[f"{rank}"].add((next((item["TaxId"] for item in entry["LineageEx"] if item["Rank"] == f"{rank}"), None)))
+                    if (next((item["TaxId"] for item in entry["LineageEx"] if item["Rank"] == rank), None)) != None:
+                        protozoa[rank].add((next((item["TaxId"] for item in entry["LineageEx"] if item["Rank"] == rank), None)))
             else:
                 rest.add(entry["TaxId"])
     except:
         print(f"falty is {trying}")
     
     result_dict = {"bacteria": bacteria, "archaea": archaea, "viruses": viruses, "fungi": fungi, "protozoa": protozoa, "rest": rest}
-    result_str = f"""
-    {origin}
-    Bacteria has 
-        Superkingdom: {len(bacteria["superkingdom"])}
-        Kingdom: {len(bacteria["kingdom"])}
-        Phylum: {len(bacteria["phylum"])}
-        Class: {len(bacteria["class"])}
-        Order: {len(bacteria["order"])}
-        Family: {len(bacteria["family"])}
-        Genus: {len(bacteria["genus"])}
-        Species: {len(bacteria["species"])}
+    return result_dict
 
-    Archaea has 
-        Superkingdom: {len(archaea["superkingdom"])}
-        Kingdom: {len(archaea["kingdom"])}
-        Phylum: {len(archaea["phylum"])}
-        Class: {len(archaea["class"])}
-        Order: {len(archaea["order"])}
-        Family: {len(archaea["family"])}
-        Genus: {len(archaea["genus"])}
-        Species: {len(archaea["species"])}
-
-    Viruses has 
-        Superkingdom: {len(viruses["superkingdom"])}
-        Kingdom: {len(viruses["kingdom"])}
-        Phylum: {len(viruses["phylum"])}
-        Class: {len(viruses["class"])}
-        Order: {len(viruses["order"])}
-        Family: {len(viruses["family"])}
-        Genus: {len(viruses["genus"])}
-        Species: {len(viruses["species"])}
-
-    Fungi has 
-        Superkingdom: {len(fungi["superkingdom"])}
-        Kingdom: {len(fungi["kingdom"])}
-        Phylum: {len(fungi["phylum"])}
-        Class: {len(fungi["class"])}
-        Order: {len(fungi["order"])}
-        Family: {len(fungi["family"])}
-        Genus: {len(fungi["genus"])}
-        Species: {len(fungi["species"])}
-
-    Protozoa has 
-        Superkingdom: {len(protozoa["superkingdom"])}
-        Kingdom: {len(protozoa["kingdom"])}
-        Phylum: {len(protozoa["phylum"])}
-        Class: {len(protozoa["class"])}
-        Order: {len(protozoa["order"])}
-        Family: {len(protozoa["family"])}
-        Genus: {len(protozoa["genus"])}
-        Species: {len(protozoa["species"])}
-
-    The {len(rest)} TaxIDs bellow were not classified:
-        {rest}
-    """
-    
-    return result_dict, result_str
-
-def save_file(file_name, result_dict, result_str):
+def save_file(file_name, result_dict):
     """Saves the data to a CSV file."""
     with open(f"{file_name}_sorted.csv", "w+") as csv_out:
         csv_writer = csv.writer(csv_out, delimiter=',')
