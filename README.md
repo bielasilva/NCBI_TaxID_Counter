@@ -24,4 +24,5 @@ It can handle as many files as need, each being processed individually.
 ```
 ### Output
 
-The output is a CSV file where the rows represent same rank and the columns same group. The name is the original file name + _sorted.csv" 
+- The output is a CSV file where the rows represent same rank and the columns same group. The name is the original file name + _sorted.csv" 
+- It also outputs Venn diagrams in SVG format for Bacteria, Archaea, Viruses, Fungi and Protozoa.

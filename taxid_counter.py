@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 from Bio import Entrez
+from matplotlib_venn import venn2, venn2_circles
+from matplotlib import pyplot as plt
 import csv, os, sys
 
 def main():
@@ -22,11 +24,10 @@ def core(file):
     get_taxids_out = get_taxids(metag_result_file, file_name)
     get_tax_data_out = get_tax_data(get_taxids_out)
     sort_tax_data_out = sort_tax_data(get_tax_data_out, file_name)
-    save_file(file_name, sort_tax_data_out)
+    save_file(f"{file_name}_sorted.csv", sort_tax_data_out, ["superkingdom", "kingdom", "phylum", "class", "order", "family", "genus", "species"])
     return file_name, sort_tax_data_out
 
 def compare():
-    print("Entering compare module")
     complete_data = {}
     for file in sys.argv[2:]:
         core_out = core(file)
@@ -39,59 +40,37 @@ def compare():
         if "mpa-out" in core_out[0]:
             complete_data["metaphlan"] = core_out[1]
         print(f"Done with {core_out[0]} \n")
+    print("Entering compare module")
     # with open("complete_data.txt", "w+") as out:
     #     print(complete_data, file=out)
-    shared_bacteria_taxid = {}
-    shared_fungi_taxid = {}
-    shared_viruses_taxid = {}
-    shared_archaea_taxid = {}
+    shared_taxids = {"bacteria": {}, "archaea": {}, "viruses": {}, "fungi": {}, "protozoa": {}, "rest": "Not applicable"}
+    centrifuge_taxids = {"bacteria": set([]), "archaea": set([]), "viruses": set([]), "fungi": set([]), "protozoa": set([])}
+    kraken_taxids = {"bacteria": set([]), "archaea": set([]), "viruses": set([]), "fungi": set([]), "protozoa": set([])}
     ranks = ["phylum", "class", "order", "family", "genus", "species"]
-    # for rank in ranks:
-    #     shared_bacteria_taxid[rank] = complete_data["centrifuge"]["bacteria"][rank].intersection(complete_data["kraken"]["bacteria"][rank],
-    #                                                                                                 complete_data["metacache"]["bacteria"][rank],
-    #                                                                                                 complete_data["metaphlan"]["bacteria"][rank])
-    #     shared_archaea_taxid[rank] = complete_data["centrifuge"]["archaea"][rank].intersection(complete_data["kraken"]["archaea"][rank],
-    #                                                                                                 complete_data["metacache"]["archaea"][rank],
-    #                                                                                                 complete_data["metaphlan"]["archaea"][rank])
-    #     shared_viruses_taxid[rank] = complete_data["centrifuge"]["viruses"][rank].intersection(complete_data["kraken"]["viruses"][rank],
-    #                                                                                                 complete_data["metacache"]["viruses"][rank],
-    #                                                                                                 complete_data["metaphlan"]["viruses"][rank])
-    #     shared_fungi_taxid[rank] = complete_data["centrifuge"]["fungi"][rank].intersection(complete_data["kraken"]["fungi"][rank],
-    #                                                                                                 complete_data["metacache"]["fungi"][rank],
-    #                                                                                                 complete_data["metaphlan"]["fungi"][rank])
-    for rank in ranks:
-        shared_bacteria_taxid[rank] = complete_data["centrifuge"]["bacteria"][rank].intersection(complete_data["kraken"]["bacteria"][rank])
-        shared_archaea_taxid[rank] = complete_data["centrifuge"]["archaea"][rank].intersection(complete_data["kraken"]["archaea"][rank])
-        shared_viruses_taxid[rank] = complete_data["centrifuge"]["viruses"][rank].intersection(complete_data["kraken"]["viruses"][rank])
-        shared_fungi_taxid[rank] = complete_data["centrifuge"]["fungi"][rank].intersection(complete_data["kraken"]["fungi"][rank])
-    total = 0
-    print("\nBacteria")
-    for key, value in shared_bacteria_taxid.items():
-        print(key, "->", len(value))
-        total += len(value)
-    print(f"Total = {total}")
-    total = 0
-    
-    print("\nArchaea")
-    for key, value in shared_archaea_taxid.items():
-        print(key, "->", len(value))
-        total += len(value)
-    print(f"Total = {total}")
-    
-    total = 0
-    print("\nFungi")
-    for key, value in shared_fungi_taxid.items():
-        print(key, "->", len(value))
-        total += len(value)
-    print(f"Total = {total}")
-    
-    total = 0
-    print("\nViruses")
-    for key, value in shared_viruses_taxid.items():
-        print(key, "->", len(value))
-        total += len(value)
-    print(f"Total = {total}")
+    groups = ["bacteria", "archaea", "viruses", "fungi", "protozoa"]
 
+    for group in groups:
+        for rank in ranks:
+            shared_taxids[group][rank] = complete_data["centrifuge"][group][rank].intersection(complete_data["kraken"][group][rank])
+            centrifuge_taxids[group].update(complete_data["centrifuge"][group][rank])
+            kraken_taxids[group].update(complete_data["kraken"][group][rank])
+
+    for group in groups:
+        print(f"\n{group}")
+        for key, value in shared_taxids[group].items():
+            print(key, "->", len(value))
+    
+    for group in groups:
+        venn2([centrifuge_taxids[group], kraken_taxids[group]],
+            set_labels = ('Centrifuge', 'Kraken2'),
+            set_colors=('red', 'blue'), alpha = 0.4)
+        venn2_circles([centrifuge_taxids[group], kraken_taxids[group]], linewidth=0.5)
+        plt.title(group)
+        plt.savefig(f"{group}.svg", transparent=True)
+        plt.clf()
+
+    save_file("shared_kraken2_centrifuge.csv", shared_taxids, ranks)
+    
     # shared_bacteria_names = {}
     # shared_fungi_names = {}
     # shared_viruses_names = {}
@@ -211,12 +190,12 @@ def sort_tax_data(data_list, origin):
     result_dict = {"bacteria": bacteria, "archaea": archaea, "viruses": viruses, "fungi": fungi, "protozoa": protozoa, "rest": rest}
     return result_dict
 
-def save_file(file_name, result_dict):
+def save_file(file_name, result_dict, ranks):
     """Saves the data to a CSV file."""
-    with open(f"{file_name}_sorted.csv", "w+") as csv_out:
+    with open(file_name, "w+") as csv_out:
         csv_writer = csv.writer(csv_out, delimiter=',')
         csv_writer.writerow(["", "Bacteria", "Archaea", "Viruses", "Fungi", "Protozoa"])
-        ranks = ["superkingdom", "kingdom", "phylum", "class", "order", "family", "genus", "species"]
+        total_sum =[0,0,0,0,0]
         for rank in ranks:
             csv_writer.writerow([rank,
                                 len(result_dict["bacteria"][rank]),
@@ -224,6 +203,13 @@ def save_file(file_name, result_dict):
                                 len(result_dict["viruses"][rank]),
                                 len(result_dict["fungi"][rank]),
                                 len(result_dict["protozoa"][rank])])
+            total_sum[0] += len(result_dict["bacteria"][rank])
+            total_sum[1] += len(result_dict["archaea"][rank])
+            total_sum[2] += len(result_dict["viruses"][rank])
+            total_sum[3] += len(result_dict["fungi"][rank])
+            total_sum[4] += len(result_dict["protozoa"][rank])
+        total_sum.insert(0, "Total")
+        csv_writer.writerow(total_sum)
         csv_writer.writerow(["Not classified", result_dict["rest"], "", "", "",""])
     # with open(f"{file_name}_sorted.out", "w+") as out:
     #     out.write(result_str)
