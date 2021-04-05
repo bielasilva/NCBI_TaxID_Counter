@@ -1,0 +1,7 @@
+old/
+testes/
+datasets/
+*
+!taxid_counter.py
+!README.md
+!.gitignore
